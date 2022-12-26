@@ -26,7 +26,10 @@ MD_MAX72XX mx = MD_MAX72XX(MD_MAX72XX::PAROLA_HW, CS_PIN, MAX_DEVICES);
 
 LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLUMNS, LCD_LINES);
 
-int flag = 0;
+enum states{
+  INTRO,PIXEL_SELECTION,FIND_PIXEL,GAMEOVER
+};
+states flag = INTRO;
 int x = 0;
 int y = 0;
 int initial = 0;
@@ -38,6 +41,13 @@ int selected_y = 0;
 int a = 0;
 int first_x = 0;
 int first_y = 0;
+
+//sıcak esik degeri, bu mesafenin altı sıcak üstü soguk olur
+int hotthreshold = 14;
+
+//en yuksek mesafe 
+int biggestdist = pow(maxX,2) + pow(maxY,2);
+
 
 void pixelMotion(){
   int horz = analogRead(HORZ_PIN);
@@ -85,16 +95,16 @@ void randomPosition() {
   }
 }
 
-void coldSound(){
+void coldSound(int level){
   lcd.clear();
   lcd.setCursor(5, 0);
   lcd.print("cold");
   tone(SPEAKER_PIN, NOTE_DS5);
-  delay(300);
+  delay(100 + level);
   tone(SPEAKER_PIN, NOTE_D5);
-  delay(300);
+  delay(100 + level);
   tone(SPEAKER_PIN, NOTE_CS5);
-  delay(300);
+  delay(100 + level);
   for (byte i = 0; i < 10; i++) {
     for (int pitch = -10; pitch <= 10; pitch++) {
       tone(SPEAKER_PIN, NOTE_C5 + pitch);
@@ -105,21 +115,21 @@ void coldSound(){
   lcd.clear();
 }
 
-void hotSound(){
+void hotSound(int level){
   lcd.clear();
   lcd.setCursor(6, 0);
   lcd.print("hot");
-  tone(SPEAKER_PIN, NOTE_E4);
+  tone(SPEAKER_PIN, NOTE_E4 + level);
   delay(150);
-  tone(SPEAKER_PIN, NOTE_G4);
+  tone(SPEAKER_PIN, NOTE_G4 + level);
   delay(150);
-  tone(SPEAKER_PIN, NOTE_E5);
+  tone(SPEAKER_PIN, NOTE_E5 + level);
   delay(150);
-  tone(SPEAKER_PIN, NOTE_C5);
+  tone(SPEAKER_PIN, NOTE_C5 + level);
   delay(150);
-  tone(SPEAKER_PIN, NOTE_D5);
+  tone(SPEAKER_PIN, NOTE_D5 + level);
   delay(150);
-  tone(SPEAKER_PIN, NOTE_G5);
+  tone(SPEAKER_PIN, NOTE_G5 + level);
   delay(150);
   noTone(SPEAKER_PIN);
   lcd.clear();
@@ -173,11 +183,18 @@ void findPixel() {
       if(x == randx && y == randy){
         flag = 3;
       }
-      else if (final > initial){
-        coldSound();
-      } 
-      else if (final < initial){
-        hotSound();
+
+      int hotlevel = 1500 - map(final,0,hotthreshold,0,1500);
+      int coldlevel = map(final,hotthreshold,biggestdist/2,0,500);
+
+      if(x == randx && y == randy){
+        flag = 3;
+      }
+      else if(final > hotthreshold){
+        coldSound(coldlevel);
+      }
+      else{
+        hotSound(hotlevel);
       }
     }
   }
